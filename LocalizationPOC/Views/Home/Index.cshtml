@@ -1,0 +1,145 @@
+﻿@{
+    ViewBag.Title = "Home Page";
+    var CurrentCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
+}
+
+<div class="jumbotron">
+    <h2>@Consumer.CURRENT_CULTURE_DETAILS - <img src="https://www.countryflags.io/@CurrentCulture.Name.Split('-')[1]/shiny/48.png"> (@CurrentCulture.NativeName)</h2>
+    <div class="row">
+        <div class="col-md-3">Name: </div>
+        <div class="col-md-3">@CurrentCulture.Name</div>
+        <div class="col-md-3">NativeName:</div>
+        <div class="col-md-3">@CurrentCulture.NativeName</div>
+    </div>
+    <div class="row">
+        <div class="col-md-3">Parent: </div>
+        <div class="col-md-3">@CurrentCulture.Parent</div>
+        <div class="col-md-3">DisplayName:</div>
+        <div class="col-md-3">@CurrentCulture.DisplayName</div>
+    </div>
+    <div class="row">
+        <div class="col-md-3">Date Format: </div>
+        <div class="col-md-3">@DateTime.Now.ToString()</div>
+        <div class="col-md-3">Currency Format:</div>
+        <div class="col-md-3">@String.Format("{0:c2}", 19.98)</div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <h2>@Consumer.CULTURE</h2>
+        <div class="form-group">
+            <label for="cultureOptions">@Consumer.SELECT_CULTURE</label>
+            <select class="form-control" id="cultureOptions">
+                @foreach (var culture in ViewBag.CulturesCollection)
+                {
+                    if (culture.Value == CurrentCulture.Name)
+                    {
+                        <option value="@culture.Value" selected>@culture.Name</option>
+                    }
+                    else
+                    {
+                        <option value="@culture.Value">@culture.Name</option>
+                    }
+                }
+            </select>
+        </div>
+
+        <button class="btn btn-default" id="saveBtn">@Consumer.CHANGE</button>
+    </div>
+    <div class="col-md-4">
+
+        <h2>@Consumer.TRANSLATE</h2>
+        <div class="form-group">
+            <label for="keyOptions">@Consumer.SELECT_KEY</label>
+            <select class="form-control" id="keyOptions">
+                @foreach (var key in ViewBag.ResourceKeys)
+                {
+                    <option value="@key">@key</option>
+                }
+            </select>
+        </div>
+
+        <button class="btn btn-default" id="translateBtn">@Consumer.TRANSLATE</button>
+        <button class="btn btn-default" id="translateBatchBtn">@Consumer.BATCH_TRANSLATE</button>
+
+    </div>
+    <div class="col-md-4">
+        <p id="translatedValue"></p>
+
+    </div>
+</div>
+
+@section scripts{
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+            function init() {
+                $('#saveBtn').off('click').on('click', ChangeCulture);
+                $('#translateBtn').off('click').on('click', TranslateResource);
+                $('#translateBatchBtn').off('click').on('click', TranslateBatch);
+            };
+
+            var ChangeCulture = function (e) {
+                e.preventDefault();
+                var selected = $("#cultureOptions").val();
+                console.log('Selected culture: ' + selected);
+                var baseUrl = window.location.origin;
+
+                $.post(baseUrl + "/api/culture/" + selected, null, function (data) {
+                    console.log(data);
+                    if (data == "success") {
+                        location.reload();
+                    } else {
+                        alert("Failed to set culture: " + selected);
+                    }
+                });
+            }
+
+            var TranslateResource = function (e) {
+                e.preventDefault();
+
+                var selected = $("#keyOptions").val();
+                console.log('Selected key: ' + selected);
+                var baseUrl = window.location.origin;
+
+                $.get(baseUrl + "/api/translate/" + selected, function (data) {
+                    console.log(data);
+                    if (data) {
+                        $('#translatedValue').html(data);
+                    } else {
+                        alert("Failed to translate: " + selected);
+                    }
+                });
+            };
+
+            var TranslateBatch = function (e) {
+                e.preventDefault();
+
+                var options = $('#keyOptions option');
+                var values = $.map(options, function (option) {
+                    return option.value;
+                });
+
+                var baseUrl = window.location.origin;
+                $.ajax({
+                    type: "POST",
+                    url: baseUrl + "/api/translate",
+                    data: { "": values },
+                    dataType: "json",
+                    success: function (data) {
+                        if (data) {
+                            $('#translatedValue').html('');
+                            for (i = 0; i < data.length; i++) {
+                                $('#translatedValue').append(data[i].Key + ': ' + data[i].Value + '<br>');
+                            }
+                        }
+                    },
+                    failure: function () { alert("Failed to translate"); }
+                });
+            }
+
+            init();
+        });
+    </script>
+}
